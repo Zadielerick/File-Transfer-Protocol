@@ -1,0 +1,26 @@
+///Author: Erick Narvaez
+#include <iostream> 		// Input/Output from console
+#include <cstring> 			//Needed for memset 
+#include <string> 			
+#include <sys/socket.h>		// Needed for socket functions	
+#include <netdb.h>			// Needed for socket functions
+//#include <errno.h> // Outputs error messages when needed. 
+//#include <stdlib.h>
+
+using namespace std;
+
+int main() {
+	int status;
+	struct addrinfo host_info;
+	struct addrinfo *host_info_list;
+	
+	memset(&host_info, 0 , sizeof host_info);
+	
+	cout << "Setting up structs..." << endl;
+	
+	host_info.ai_family = AF_UNSPEC;	// Both IPv4 and IPv6 work
+	host_info.ai_socktype = SOCK_STREAM; 	//SOCK_STREAM=TCP and SOCK_DGRAM=UDP
+	
+	status = getaddrinfo("google.com","80",&host
+
+}

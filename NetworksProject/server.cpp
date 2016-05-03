@@ -8,15 +8,18 @@
 #include <errno.h>		// Needed to display error messages
 #include <stdlib.h>		
 #include <fstream>
+#include <vector>
 
 using namespace std;
 struct addrinfo *host_info_list;	//Pointer to linked list of host_infos
 int socketfd;
 int new_sd;
-char * memblockMain;
+vector<char> memblockMain;
 bool accessed = false;
 int fragmentationSize;
 int totalSize;
+//ofstream outputFile ("outputTest.jpg", ofstream::binary|ofstream::app);
+//const int buff = 50;
 
 void setupSocket(const char *port){
 	int status;
@@ -70,36 +73,35 @@ void acceptMessage(){
     ssize_t bytes_recieved;
     char incomming_data_buffer[1000];
     bytes_recieved = recv(new_sd, incomming_data_buffer,1000, 0);
-    
+    cout << incomming_data_buffer << " bytes gonna be received" << endl;
     if (bytes_recieved == 0) 
 		cout << "Host shut down." << endl;
     if (bytes_recieved == -1)
 		cout << "recieve error!" << endl ;
-    //cout << bytes_recieved << " bytes recieved :" << endl ;
+    
     incomming_data_buffer[bytes_recieved] = '\0';
     //cout << incomming_data_buffer << endl;
 	int i = atoi(incomming_data_buffer);
-	char * memblock;
-	//cout << "Size of allocated array: " << i << endl;
-	memblock = new char [i];
+	cout << i << " is the other value" << endl;
+	vector<char> memblock(i);
+		
+	bytes_recieved = recv(new_sd,&memblock[0],i,0);
+	//vector<char>::iterator it = memblock.end();
+
+	cout << bytes_recieved << " bytes recieved :" << endl;
+	cout << memblock.size() << " is the size of the memblock" << endl;
+	cout << &memblock[0] << endl;
+	//outputFile.write((char*)&memblock,memblock.size());
+	//~ vector<char> temp;
+	//~ temp.reserve(memblockMain.size()+ memblock.size());
+	//~ temp.insert(temp.end(), memblockMain.begin(), memblockMain.end() );
+	//~ temp.insert(temp.end(), memblock.begin(), memblock.end() );
 	
-    //cout << "send()ing back a message..."  << endl;
-    //const char *msg = "Got it. Dynamically allocated space.";
-	//~ int len;
-	//~ ssize_t bytes_sent;
-    //~ len = strlen(msg);
-    //~ bytes_sent = send(new_sd, msg, len, 0);
-	
-	bytes_recieved = recv(new_sd, memblock,i,0);
-	//cout << memblock << endl;
-	//~ if(!accessed){
-		//~ strcpy(memblock,memblockMain);
-		//~ accessed = true;
-	//~ }
-	//~ else
-	strcat(memblockMain,memblock);
-	delete[] memblock;
-	memblock = nullptr;
+	//memblockMain = temp;
+	memblockMain.insert(memblockMain.end(), memblock.begin(), memblock.end());
+	cout << "WOOOOOOO" << endl;
+	//move(memblock.begin(), memblock.end(), back_inserter(memblockMain));	
+	//memblock.erase(memblock.begin(), memblock.end());
 }
 
 void setMemSize(){
@@ -115,10 +117,12 @@ void setMemSize(){
     incomming_data_buffer[bytes_recieved] = '\0';
     cout << incomming_data_buffer << endl;
 	totalSize = atoi(incomming_data_buffer);
-	
+	cout << totalSize << " TOTAL SIZE" << endl;
 	//cout << "Size of allocated array: " << totalSize << endl;
-	memblockMain = new char [totalSize];
-	
+	//memblockMain.resize(totalSize); 			//= new char [totalSize];
+	cout << memblockMain.size() << " is the size of the memblockMain" << endl;
+	//~ if (memblockMain == nullptr)
+		//~ cout << "WTF" << endl;
 	char incomming_data_buffer_s[100];
 	bytes_recieved = recv(new_sd, incomming_data_buffer_s,100, 0);
 	fragmentationSize = atoi(incomming_data_buffer_s);
@@ -127,9 +131,15 @@ void setMemSize(){
 
 void closeSocket(){
 	//cout << memblockMain << "WHAT" << endl;
-	ofstream myfile;
-	myfile.open ("serverOutput.txt");
-	myfile << memblockMain;
+	//~ ofstream myfile;
+	//~ myfile.open ("serverOutput.jpg", ios::out | ios::binary| ios::ate);
+	//~ myfile << memblockMain;
+	ofstream outputFile ("outputTest.jpg", ofstream::binary);
+	outputFile.write(&memblockMain[0],totalSize);
+	outputFile.close();
+	
+	
+	//myfile.close();
 	cout << "Stopping server..." << endl;
     freeaddrinfo(host_info_list);
 }
@@ -139,11 +149,10 @@ int main(){
 	setupSocket(port);
 	setMemSize();
 	//
-	int repeat = totalSize/fragmentationSize;
-	for (int i = 0; i <= repeat; i++){
+	int repeat = totalSize/fragmentationSize + 1;
+	for (int i = 0; i < repeat; i++){
 		acceptMessage();
 	}
-	//acceptMessage();
 	closeSocket();
 	return 0 ;
 }

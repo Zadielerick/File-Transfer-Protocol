@@ -44,9 +44,7 @@ void setupSocket(const char *ip, const char *port){
 void sendMessage(vector<char>& msg){
 	int len;
 	ssize_t bytes_sent;
-	//ssize_t bytes_recieved;
-	//char incoming_data_buffer[1000];
-	//char incoming_data_buffer_s[1000];
+	
 
 	len = msg.size();
 	string temp = to_string(len);
@@ -54,29 +52,13 @@ void sendMessage(vector<char>& msg){
 	int len2 = strlen(msglen);
 	cout << "Sending length: " << msglen << endl;
 	send(socketfd,msglen,len2,0);			// Client sends length info to server
-	//cout<< "Sending message..." << endl;
 	
-	//bytes_recieved = recv(socketfd,incoming_data_buffer_s, 1000, 0);	//Client waits for server confirmation
-	//cout << incoming_data_buffer_s << endl;
-	cout << "len is equal to" << len << endl;
 	bytes_sent = send(socketfd, &msg[0], len, 0);
 	if(bytes_sent == 0) 
 		cout << "Host shutdown" << endl;
 	if(bytes_sent == -1)
 		cout << "Receive Error: " << strerror(errno);
-	cout << bytes_sent << " bytes sent : " << endl;
-	
-	//cout << "Waiting to receive data..." << endl;
-	
-	//bytes_recieved = recv(socketfd, incoming_data_buffer, 1000, 0);
-	
-	//~ if(bytes_recieved == 0) 
-		//~ cout << "Host shutdown" << endl;
-	//~ if(bytes_recieved == -1)
-		//~ cout << "Receive Error: " << strerror(errno);
-	//~ cout << bytes_recieved << " bytes received : " << endl;
-	//~ incoming_data_buffer[bytes_recieved] = '\0';
-	//cout << incoming_data_buffer << endl;
+	cout << bytes_sent << " bytes sent... " << endl;
 }
 
 void closeSocket(){
@@ -84,24 +66,32 @@ void closeSocket(){
 	freeaddrinfo(host_info_list);
 }
 
-void sendSize(int sizeM, int packetSize){
+void sendSize(int sizeM, int packetSize, string fileName){
 	string temp = to_string(sizeM);
 	const char * msglen = temp.c_str();
 	int len2 = strlen(msglen);
-	cout << "Sending length" << endl;
 	send(socketfd,msglen,len2,0);
 	temp = to_string(packetSize);
 	const char * msglen2 = temp.c_str();
 	len2 = strlen(msglen);
-	//cout << "Sending packet size" << endl;
 	send(socketfd,msglen2,len2,0);
-	
+	len2 = fileName.length();
+	send(socketfd,fileName.c_str(),len2,0);
 }
 
-int main() {
+int main(int argc, char* argv[]) {
 	// Gets File and checks that it opened successfully
-	const int packetSize = 200;
-	ifstream inputFile("cat.jpg", ifstream::binary);
+	const int packetSize = 300;
+	string fileName;
+	if (argc > 1){
+		fileName = argv[1];
+	}
+	else{
+		fileName = "client.cpp";
+	}
+	//cout << argc <<  " is the number of arguments" << endl;
+	cout << fileName << " is the fileName" << endl;
+	ifstream inputFile(fileName, ifstream::binary);
 	if(!(inputFile.is_open())){
 		cout << "Unable to open the file!" << endl;
 		exit(EXIT_FAILURE);
@@ -112,57 +102,54 @@ int main() {
 	size = inputFile.tellg();
 	inputFile.seekg(0, ios::beg);
     vector<char> memblock(size);
-    cout << memblock.size() << endl;
-    //cout<< "OK " << size << endl;
+    //cout << memblock.size() << endl;
 
     inputFile.read(&memblock[0], size);
 
-    cout << inputFile.gcount() << " characters read";
+    //cout << inputFile.gcount() << " characters read";
     inputFile.close();
-	
-	//~ ofstream outputFile ("outputTest.txt", ofstream::binary);
-	//~ //outputFile.write((char *)&memblock,size);
-	//~ copy(memblock.begin(), memblock.end(), ostreambuf_iterator<char>(outputFile));
-	//~ outputFile.close();
 	
 	const char *ip = "10.0.2.15";
 	const char *port = "5555";
 	
 	setupSocket(ip, port);
-	sendSize(size, packetSize);
+	sendSize(size, packetSize, fileName);
+	
 	//Here split up into packets and send indiv
 	int repeat = size/packetSize;
-	int counter = 0;
+	//int counter = 0;
 	
-	vector<char>::iterator first = memblock.begin();
-	vector<char>::iterator last = memblock.begin() + packetSize;
 	
-	for(int i = 0; i < repeat; i++){
+	
+	if(repeat > 0){
+		vector<char>::iterator first = memblock.begin();
+		vector<char>::iterator last = memblock.begin() + packetSize;
+		
+		for(int i = 0; i < repeat; i++){
 		vector<char> newVec(first, last);
-		cout << &newVec[0] << " is the size of the sent vector" << endl;
-		//char * subset = new char[packetSize];
-		//~ for(int j=0;j<packetSize; j++){
-			//~ subset[j] = memblock[counter];
-			//~ ++counter;
-		//~ }
 		sendMessage(newVec);
-		counter++;
-		cout << counter<<endl;
 		first = first + packetSize;
 		last = last + packetSize;
-		//usleep(1000);
-		//delete[] subset;
-		//subset = nullptr;
-	}
-	int remainder = size%packetSize;
-	//cout << remainder << "is the remainedr" << endl;
-	first = first + packetSize;
-	last = last + remainder;
-	vector<char> newVec(first, last);
-	sendMessage(newVec);
-	cout << "Counter = " << counter << endl;
+		}
 	
-	//sendMessage(memblock);
+		int remainder = size%packetSize;
+		if(remainder){
+			first = first + packetSize;
+			last = last + remainder;
+			vector<char> newVec(first, last);
+			sendMessage(newVec);
+		}
+	}
+	else {
+		vector<char>::iterator first = memblock.begin();
+		vector<char>::iterator last = memblock.begin() + size;
+		vector<char> newVec(first, last);
+		sendMessage(newVec);
+	}
+	
+	
+	
+	//cout << "Counter = " << counter << endl;
 	closeSocket();
 	return 0;
 }
